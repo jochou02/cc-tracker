@@ -1,4 +1,4 @@
-export const credits = {
+export const CREDIT_DEFINITIONS = {
   uber: { id: "uber", name: "Uber Credit" },
   resy: { id: "resy", name: "Resy Credit" },
   saks: { id: "saks", name: "Saks Credit" },

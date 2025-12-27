@@ -1,4 +1,4 @@
-export const cards = {
+export const CARD_DEFINITIONS = {
   amex_gold: {
     id: "amex_gold",
     name: "Amex Gold",
