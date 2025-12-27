@@ -258,6 +258,38 @@ These IDs are opaque and persisted as-is.
 - Credit instances appear if their period intersects the year
 - Non-calendar-aligned credits may appear partially
 
+```
+Timeline (Grouped by Card)
+
+                  Jan      Feb      Mar      Apr      May      Jun      Jul      Aug      Sep      Oct      Nov      Dec
+              |--------|--------|--------|--------|--------|--------|--------|--------|--------|--------|--------|--------|
+
+Amex Platinum
+  Uber (Monthly)
+               [======] [======] [======] [======] [======] [======] [======] [======] [======] [======] [======] [======]
+
+  Airline Fee (Annual)
+               [=========================================================================================================]
+
+Amex Gold
+  Dining (Quarterly)
+               [========================] [========================] [========================] [========================] 
+
+              ^ Current Date Indicator (vertical line)
+```
+### Details
+- Rows are grouped by credit card
+- Each credit type (Uber, Airline, Dining) gets its own row
+- Rectangles represent individual credit periods
+- Monthly → many short segments
+- Quarterly → fewer medium segments
+- Annual → one long continuous segment
+- The horizontal axis is calendar year (Jan → Dec)
+- Credit periods may start or end mid-year (anniversary-based cards)
+- A vertical line indicates today’s date
+- Width of each segment corresponds to its active duration
+- Multiple segments in the same row indicate repeated credit availability
+
 ### Rendering Rules
 - `visibleStart = max(periodStart, Jan 1)`
 - `visibleEnd = min(periodEnd, Dec 31)`
