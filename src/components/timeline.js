@@ -5,6 +5,10 @@ import { toISODate } from "../utils/dates.js";
 
 const containerId = "timeline";
 
+const LABEL_WIDTH_REM = 8;
+const AMOUNT_WIDTH_REM = 4;
+
+
 /**
  * Entry point
  */
@@ -14,35 +18,32 @@ export function initTimeline() {
     throw new Error(`#${containerId} not found in DOM`);
   }
 
-  // Initial render
   render(container, getState());
 
-  // Subscribe to store updates
   subscribe(state => {
     render(container, state);
   });
 
-  // Add event delegation for timeline clicks
-  container.addEventListener('click', handleTimelineClick);
+  container.addEventListener("click", handleTimelineClick);
 }
 
 /**
  * Handle clicks on timeline credit segments
  */
 function handleTimelineClick(event) {
-  const creditSegment = event.target.closest('[data-credit-id]');
-  if (creditSegment && creditSegment.dataset.creditId) {
-    const creditId = creditSegment.dataset.creditId;
-    const state = getState();
-    const isCurrentlyChecked = !!state.checkedCredits[creditId];
-    
-    // Toggle the credit
-    toggleCredit(creditId, !isCurrentlyChecked);
-  }
+  const segment = event.target.closest("[data-credit-id]");
+  if (!segment) return;
+
+  const creditInstanceId = segment.dataset.creditId;
+  if (!creditInstanceId) return;
+
+  const state = getState();
+  const isChecked = !!state.checkedCredits[creditInstanceId];
+  toggleCredit(creditInstanceId, !isChecked);
 }
 
 /**
- * Main render function
+ * Main render
  */
 function render(container, state) {
   if (state.creditInstances.length === 0) {
@@ -54,27 +55,24 @@ function render(container, state) {
     return;
   }
 
-  // Group credit instances by card for timeline display
   const grouped = groupByCard(state.creditInstances);
 
   container.innerHTML = `
     <div class="bg-white border rounded-lg p-6">
       <div class="flex items-center justify-between mb-6">
         <h2 class="text-xl font-semibold">
-          Timeline - ${state.year}
+          Timeline — ${state.year}
         </h2>
         ${renderLegend()}
       </div>
-      
-      <!-- Global timeline header -->
+
       <div class="relative mb-4">
-        ${renderGlobalTimelineHeader(state.year)}
+        ${renderMonthHeader()}
       </div>
-      
-      <!-- Timeline content with unified current date line -->
+
       <div class="relative">
-        ${renderCurrentDateLine(state.year)}
-        <div class="space-y-4">
+        ${renderTodayIndicator(state.year)}
+        <div class="space-y-6">
           ${Object.entries(grouped)
             .map(([cardId, credits]) =>
               renderCardTimeline(cardId, credits, state)
@@ -87,11 +85,11 @@ function render(container, state) {
 }
 
 /**
- * Render color legend for timeline
+ * Legend
  */
 function renderLegend() {
   return `
-    <div class="flex items-center gap-4 text-xs">
+    <div class="flex items-center gap-4 text-xs text-gray-600">
       <div class="flex items-center gap-1">
         <div class="w-3 h-3 bg-blue-400 rounded"></div>
         <span>Active</span>
@@ -113,90 +111,75 @@ function renderLegend() {
 }
 
 /**
- * Render global timeline header with months
+ * Month header (pure flex, no absolute positioning bugs)
  */
-function renderGlobalTimelineHeader(year) {
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
-                  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  
+function renderMonthHeader() {
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
   return `
-    <div class="relative h-8 bg-gray-100 border rounded ml-32">
-      <div class="absolute inset-0 flex">
-        ${months.map((month, index) => {
-          const leftPercent = (index / 12) * 100;
-          const widthPercent = (1 / 12) * 100;
-          return `
-            <div 
-              class="border-r border-gray-300 flex items-center justify-start pl-2 text-xs font-medium text-gray-600"
-              style="left: ${leftPercent}%; width: ${widthPercent}%;"
-            >
-              ${month}
-            </div>
-          `;
-        }).join('')}
-      </div>
+    <div
+      class="ml-${LABEL_WIDTH_REM * 4} h-8 border rounded bg-gray-100 flex text-xs font-medium text-gray-600"
+    >
+      ${months.map(m => `
+        <div class="flex-1 flex items-center justify-center border-r last:border-r-0">
+          ${m}
+        </div>
+      `).join("")}
     </div>
   `;
 }
 
 /**
- * Render unified current date line that goes through all rows
+ * Today indicator (local time, aligned to timeline)
  */
-function renderCurrentDateLine(year) {
-  const currentYear = new Date().getFullYear();
-  if (year !== currentYear) {
-    return '';
-  }
-  
+function renderTodayIndicator(year) {
   const now = new Date();
-  const yearStart = new Date(Date.UTC(year, 0, 1));
-  const yearEnd = new Date(Date.UTC(year, 11, 31));
-  const yearDuration = yearEnd.getTime() - yearStart.getTime();
-  const currentPercent = ((now.getTime() - yearStart.getTime()) / yearDuration) * 100;
-  
+  if (now.getFullYear() !== year) return "";
+
+  const yearStart = new Date(year, 0, 1);
+  const yearEnd = new Date(year, 11, 31, 23, 59, 59);
+  const yearDuration = yearEnd - yearStart;
+
+  const pct = ((now - yearStart) / yearDuration) * 100;
+
   return `
-    <div 
+    <div
       class="absolute top-0 bottom-0 w-0.5 bg-red-500 z-20 pointer-events-none"
-      style="left: ${currentPercent.toFixed(2)}%;"
+      style="left: ${pct.toFixed(2)}%;"
       title="Today"
     ></div>
   `;
 }
 
 /**
- * Group credit instances by cardId
+ * Group credit instances by card
  */
-function groupByCard(creditInstances) {
+function groupByCard(instances) {
   const map = {};
-
-  for (const ci of creditInstances) {
-    if (!map[ci.cardId]) {
-      map[ci.cardId] = [];
-    }
+  for (const ci of instances) {
+    if (!map[ci.cardId]) map[ci.cardId] = [];
     map[ci.cardId].push(ci);
   }
-
   return map;
 }
 
 /**
- * Render timeline for one card
+ * Render one card section
  */
 function renderCardTimeline(cardId, credits, state) {
   const cardDef = CARD_DEFINITIONS[cardId];
-  
-  // Group credits by creditId for separate rows
-  const creditRows = groupCreditsByType(credits);
-  
+  const creditRows = groupByCreditType(credits);
+
   return `
-    <div class="border-b pb-4 last:border-b-0">
+    <div class="border-b pb-6 last:border-b-0">
       <h3 class="font-medium text-lg mb-3">
         ${cardDef.name}
       </h3>
+
       <div class="space-y-2">
         ${Object.entries(creditRows)
-          .map(([creditId, creditInstances]) =>
-            renderCreditRow(creditId, creditInstances, state)
+          .map(([creditId, instances]) =>
+            renderCreditRow(creditId, instances, state)
           )
           .join("")}
       </div>
@@ -205,78 +188,71 @@ function renderCardTimeline(cardId, credits, state) {
 }
 
 /**
- * Group credits by creditId to create separate rows for each credit type
+ * Group instances by creditId
  */
-function groupCreditsByType(credits) {
+function groupByCreditType(credits) {
   const map = {};
-  
   for (const ci of credits) {
-    if (!map[ci.creditId]) {
-      map[ci.creditId] = [];
-    }
+    if (!map[ci.creditId]) map[ci.creditId] = [];
     map[ci.creditId].push(ci);
   }
-  
   return map;
 }
 
 /**
- * Render one credit type row (e.g., all Uber credits for this card)
+ * Render one credit row
  */
-function renderCreditRow(creditId, creditInstances, state) {
+function renderCreditRow(creditId, instances, state) {
   const creditDef = CREDIT_DEFINITIONS[creditId];
-  
+
   return `
     <div class="flex items-center">
-      <div class="text-sm font-medium w-32 flex-shrink-0">
+      <div class="w-32 text-sm font-medium pr-2 leading-tight">
         ${creditDef.name}
       </div>
-      <div class="relative bg-white border rounded h-8 overflow-hidden flex-1">
-        ${renderTimelineBar(creditInstances, creditDef, state)}
+      <div class="relative flex-1 h-8 border rounded overflow-hidden bg-white">
+        ${renderSegments(instances, creditDef, state)}
       </div>
     </div>
   `;
 }
 
 /**
- * Render the actual timeline bar with segments
+ * Render timeline segments
  */
-function renderTimelineBar(creditInstances, creditDef, state) {
+function renderSegments(instances, creditDef, state) {
   const year = state.year;
-  const yearStart = new Date(Date.UTC(year, 0, 1));
-  const yearEnd = new Date(Date.UTC(year, 11, 31));
-  const yearDuration = yearEnd.getTime() - yearStart.getTime();
+  const yearStart = new Date(year, 0, 1);
+  const yearEnd = new Date(year, 11, 31, 23, 59, 59);
+  const yearDuration = yearEnd - yearStart;
   const now = new Date();
-  
-  return creditInstances.map(ci => {
-    // Calculate position and width as percentages of the year
-    const visibleStart = new Date(Math.max(ci.startDate.getTime(), yearStart.getTime()));
-    const visibleEnd = new Date(Math.min(ci.endDate.getTime(), yearEnd.getTime()));
-    
-    const leftPercent = ((visibleStart.getTime() - yearStart.getTime()) / yearDuration) * 100;
-    const widthPercent = ((visibleEnd.getTime() - visibleStart.getTime()) / yearDuration) * 100;
-    
-    // Determine if credit is active, used, or available
-    const isActive = now >= ci.startDate && now <= ci.endDate;
-    const isChecked = !!state.checkedCredits[ci.id];
-    
-    let bgColor;
-    if (isChecked) {
-      bgColor = "bg-green-400"; // Used
-    } else if (isActive) {
-      bgColor = "bg-blue-400"; // Currently active
-    } else {
-      bgColor = "bg-gray-300"; // Future or past
-    }
-    
-    return `
-      <div 
-        class="${bgColor} absolute top-0 bottom-0 border-r border-white hover:opacity-75 cursor-pointer"
-        style="left: ${leftPercent.toFixed(2)}%; width: ${widthPercent.toFixed(2)}%;"
-        data-credit-id="${ci.id}"
-        title="${creditDef.name}: $${ci.amount} (${toISODate(ci.startDate)} - ${toISODate(ci.endDate)})"
-      >
-      </div>
-    `;
-  }).join('');
+
+  return instances
+    .map(ci => {
+      const visibleStart = new Date(Math.max(ci.startDate, yearStart));
+      const visibleEnd = new Date(Math.min(ci.endDate, yearEnd));
+
+      if (visibleEnd <= visibleStart) return "";
+
+      const leftPct = ((visibleStart - yearStart) / yearDuration) * 100;
+      const widthPct = ((visibleEnd - visibleStart) / yearDuration) * 100;
+
+      const isUsed = !!state.checkedCredits[ci.id];
+      const isActive = !isUsed && now >= ci.startDate && now <= ci.endDate;
+
+      let bg;
+      if (isUsed) bg = "bg-green-400";
+      else if (isActive) bg = "bg-blue-400";
+      else bg = "bg-gray-300";
+
+      return `
+        <div
+          class="${bg} absolute top-0 bottom-0 border-r border-white hover:opacity-80 cursor-pointer"
+          style="left:${leftPct.toFixed(2)}%; width:${widthPct.toFixed(2)}%;"
+          data-credit-id="${ci.id}"
+          title="${creditDef.name} • $${ci.amount} (${toISODate(ci.startDate)} → ${toISODate(ci.endDate)})"
+        ></div>
+      `;
+    })
+    .join("");
 }
