@@ -37,7 +37,61 @@ This is an **internal personal tool**, not a commercial product.
 
 ---
 
-## 2. Core Design Principles
+## 2. MVP Scope
+
+The MVP launches with a single focused view: the **timeline**.
+
+### What's included in the MVP
+
+- **Year selector** — navigate between calendar years
+- **User selector** — switch between configured household users (hidden when only one user)
+- **Timeline** — per-card, per-credit-type rows spanning the full calendar year, with:
+  - Color-coded segments (active, used, inactive)
+  - A "today" indicator line for the current year
+  - Click-to-toggle credit usage directly on timeline segments
+
+The goal of the MVP is to get the core visualization working end-to-end with real data before adding more UI surface area.
+
+### What's NOT in the MVP (planned for later)
+
+See [Section 3 — Future Development](#3-future-development) below.
+
+---
+
+## 3. Future Development
+
+The following features are designed and ready to build, but intentionally excluded from the MVP to keep the initial release focused and shippable.
+
+### Active Credits List (`#active-credits`)
+
+A dedicated panel showing only the credits that are active right now (i.e., `now >= startDate && now <= endDate`), grouped by card. Each credit shows:
+- Credit name and dollar amount
+- Start and end dates
+- A checkbox to mark it as used
+
+This duplicates the "active" information visible on the timeline but in a more scannable list format — useful once the number of cards/credits grows.
+
+### Card Summary Tiles (`#card-tiles`)
+
+A responsive grid of per-card summary tiles, each showing:
+- Card name
+- How many active credits have been used vs. total (e.g., "2 / 4 active credits used")
+- Remaining dollar value for the current period
+
+Useful as a quick at-a-glance dashboard before drilling into the timeline.
+
+### Backend Persistence
+
+The API layer (`src/utils/api.js`) is currently a no-op stub. Future work includes wiring it to:
+- **API Gateway (HTTP API)**
+- **AWS Lambda (Node.js)**
+- **DynamoDB (single-table)**
+
+This will persist checked credit state across devices and sessions.
+
+---
+
+## 4. Core Design Principles
 
 1. **Progressive Enhancement**
    - Base HTML renders meaningful content
@@ -61,7 +115,7 @@ This is an **internal personal tool**, not a commercial product.
 
 ---
 
-## 3. High-Level Architecture
+## 5. High-Level Architecture
 
 ```
 Browser (SPA, enhanced HTML)
@@ -79,7 +133,7 @@ DynamoDB (Single Table)
 
 ---
 
-## 4. Frontend Architecture
+## 6. Frontend Architecture
 
 ### Stack
 - **Hosting:** GitHub Pages
@@ -107,11 +161,11 @@ No React or heavy frameworks.
 ```
 /src
   /components
-    timeline.js
-    activeCredits.js
-    cardTiles.js
-    userSelector.js
-    yearSelector.js
+    timeline.js        ← MVP
+    userSelector.js    ← MVP
+    yearSelector.js    ← MVP
+    activeCredits.js   ← Future
+    cardTiles.js       ← Future
   /data
     cards.js           // card definitions
     credits.js         // credit definitions
@@ -121,17 +175,18 @@ No React or heavy frameworks.
   /utils
     dates.js
     creditExpansion.js
+    api.js
   main.js
 index.html
 ```
 
 ---
 
-## 5. Data Model Separation (Critical Concept)
+## 7. Data Model Separation (Critical Concept)
 
 This system explicitly separates **definitions**, **instances**, and **state**.
 
-### 5.1 Global Credit Definitions (Static, Global)
+### 7.1 Global Credit Definitions (Static, Global)
 Defines **what a credit is conceptually**, independent of any card.
 
 ```js
@@ -148,7 +203,7 @@ CreditDefinition {
 
 ---
 
-### 5.2 Card Definitions (Static, Global)
+### 7.2 Card Definitions (Static, Global)
 Defines a card and how it configures each credit.
 
 ```js
@@ -164,7 +219,7 @@ CardDefinition {
     },
     {
       creditId: "resy",
-      cadence: "semi-annual",
+      cadence: "biannual",
       amount: 50,
       periodType: "calendar"
     }
@@ -180,7 +235,7 @@ Key properties:
 
 ---
 
-### 5.3 User Configuration (Static, Per User)
+### 7.3 User Configuration (Static, Per User)
 Defines which cards a user owns and when each card was opened.
 
 ```js
@@ -213,7 +268,7 @@ This configuration is used at runtime to:
 
 ---
 
-### 5.4 User State (Dynamic, Persisted)
+### 7.4 User State (Dynamic, Persisted)
 Tracks only what the user has done.
 
 ```js
@@ -222,11 +277,11 @@ checkedCredits: {
 }
 ```
 
-Persisted in DynamoDB.
+Persisted in DynamoDB (future — currently a no-op stub).
 
 ---
 
-## 6. Credit Instance Model (Derived)
+## 8. Credit Instance Model (Derived)
 
 A **credit instance** represents a single usable occurrence of a credit.
 
@@ -252,7 +307,7 @@ These IDs are opaque and persisted as-is.
 
 ---
 
-## 7. Timeline Model
+## 9. Timeline Model
 
 - Timeline is rendered **per calendar year**
 - Credit instances appear if their period intersects the year
@@ -286,7 +341,7 @@ Amex Gold
 - Annual → one long continuous segment
 - The horizontal axis is calendar year (Jan → Dec)
 - Credit periods may start or end mid-year (anniversary-based cards)
-- A vertical line indicates today’s date
+- A vertical line indicates today's date
 - Width of each segment corresponds to its active duration
 - Multiple segments in the same row indicate repeated credit availability
 
@@ -297,7 +352,7 @@ Amex Gold
 
 ---
 
-## 8. Active Credits Definition
+## 10. Active Credits Definition
 
 A credit instance is **active** if:
 
@@ -306,13 +361,13 @@ now >= startDate && now <= endDate
 ```
 
 Active credits appear in:
-- Active Credits list
-- Highlighted timeline segments
-- Card aggregation tiles
+- Highlighted timeline segments (MVP)
+- Active Credits list (future)
+- Card aggregation tiles (future)
 
 ---
 
-## 9. Backend Architecture
+## 11. Backend Architecture
 
 ### Stack
 - API Gateway (HTTP API)
@@ -323,7 +378,7 @@ All remain within AWS Free Tier.
 
 ---
 
-## 10. DynamoDB Schema
+## 12. DynamoDB Schema
 
 ### Table: `credit-tracker`
 
@@ -347,7 +402,7 @@ No cards, credits, or years are stored.
 
 ---
 
-## 11. Backend API
+## 13. Backend API
 
 ### GET /state?user=john
 
@@ -374,7 +429,7 @@ Backend validates input and persists state only.
 
 ---
 
-## 12. Multi-User Support
+## 14. Multi-User Support
 
 - Users predefined in config
 - UI selector switches active user
@@ -383,7 +438,7 @@ Backend validates input and persists state only.
 
 ---
 
-## 13. Multi-Year Support
+## 15. Multi-Year Support
 
 - Year is a UI filter
 - Credit instances derived per year
@@ -392,7 +447,7 @@ Backend validates input and persists state only.
 
 ---
 
-## 14. Security Model
+## 16. Security Model
 
 - Hardcoded API key (header-based)
 - CORS restricted to GitHub Pages domain
@@ -401,7 +456,7 @@ Backend validates input and persists state only.
 
 ---
 
-## 15. Summary
+## 17. Summary
 
 This design:
 - Correctly separates definitions, instances, and state
@@ -411,4 +466,3 @@ This design:
 - Remains zero-cost and maintainable
 
 The system is intentionally deterministic, explicit, and boring — ideal for a long-lived personal internal tool.
-
