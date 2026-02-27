@@ -269,12 +269,18 @@ function renderCurrentDateLine(year) {
   const yearDuration = yearEnd.getTime() - yearStart.getTime();
   const currentPercent = ((now.getTime() - yearStart.getTime()) / yearDuration) * 100;
 
+  const fraction = (currentPercent / 100).toFixed(4);
+  const todayLabel = now.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   return `
     <div
       class="absolute top-0 bottom-0 w-0.5 bg-red-500 z-20 pointer-events-none"
-      style="left: ${currentPercent.toFixed(2)}%;"
+      style="left: calc(8rem + (100% - 8rem) * ${fraction});"
       title="Today"
-    ></div>
+    >
+      <span
+        class="absolute top-0 left-1 text-xs font-medium text-red-500 whitespace-nowrap pointer-events-none select-none"
+      >${todayLabel}</span>
+    </div>
   `;
 }
 
