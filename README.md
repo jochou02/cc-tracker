@@ -49,6 +49,7 @@ The MVP launches with a single focused view: the **timeline**.
   - Color-coded segments (active, used, inactive)
   - A "today" indicator line for the current year
   - Click-to-toggle credit usage directly on timeline segments
+  - **Credit detail modal** — clicking any credit segment opens a centered modal dialog (page-blocking) with a checkbox for used/not used, a multi-line notes field, and Save / Cancel buttons; changes are committed only on Save
 
 The goal of the MVP is to get the core visualization working end-to-end with real data before adding more UI surface area.
 
@@ -271,11 +272,25 @@ This configuration is used at runtime to:
 ### 7.4 User State (Dynamic, Persisted)
 Tracks only what the user has done.
 
+All per-instance state is nested under a single `creditState` map, keyed by the opaque credit instance ID:
+
 ```js
-checkedCredits: {
-  "amex_gold_airline_2025-05-21_2026-05-20": true
+creditState: {
+  "amex_plat_uber_2026-02-01_2026-02-28": {
+    checked: true,
+    note: "Used for Uber Eats order on Feb 14th."
+  },
+  "amex_gold_airline_2025-05-21_2026-05-20": {
+    checked: false,
+    note: ""
+  }
 }
 ```
+
+- Each key is the opaque credit instance ID (`{cardId}_{creditId}_{startISO}_{endISO}`), which uniquely identifies the card, credit type, and billing period
+- `checked` — whether the credit has been used
+- `note` — free-text paragraph; an empty or whitespace-only string is treated as no note
+- Nesting both fields under one key avoids two parallel maps that must stay in sync, and makes it easy to add future per-instance fields (e.g. `usedAt` timestamp)
 
 Persisted in DynamoDB (future — currently a no-op stub).
 
@@ -391,10 +406,13 @@ All remain within AWS Free Tier.
 {
   "pk": "USER#john",
   "sk": "STATE",
-  "checkedCredits": {
-    "amex_gold_airline_2025-05-21_2026-05-20": true
+  "creditState": {
+    "amex_plat_uber_2026-02-01_2026-02-28": {
+      "checked": true,
+      "note": "Used for Uber Eats order on Feb 14th."
+    }
   },
-  "updatedAt": "2025-05-22T01:02:03Z"
+  "updatedAt": "2026-02-15T10:00:00Z"
 }
 ```
 
@@ -409,23 +427,29 @@ No cards, credits, or years are stored.
 Returns:
 ```json
 {
-  "checkedCredits": { ... }
+  "creditState": {
+    "amex_plat_uber_2026-02-01_2026-02-28": {
+      "checked": true,
+      "note": "Used for Uber Eats order on Feb 14th."
+    }
+  }
 }
 ```
 
 ---
 
-### POST /check
+### POST /state
 
 ```json
 {
   "user": "john",
-  "creditId": "amex_gold_airline_2025-05-21_2026-05-20",
-  "checked": true
+  "creditId": "amex_plat_uber_2026-02-01_2026-02-28",
+  "checked": true,
+  "note": "Used for Uber Eats order on Feb 14th."
 }
 ```
 
-Backend validates input and persists state only.
+Updates the `checked` and/or `note` fields for a single credit instance. `creditId` is the opaque instance ID — the same key used in `creditState`. Backend performs a partial update on that instance's entry in DynamoDB; sending an empty `note` string deletes the note field.
 
 ---
 

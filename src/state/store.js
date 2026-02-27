@@ -4,7 +4,7 @@ import { expandCreditsForUserAndYear } from "../utils/creditExpansion.js";
 import { USERS } from "../data/userCards.js";
 import {
   fetchUserState,
-  updateCheckedState
+  updateCreditState
 } from "../utils/api.js";
 
 /**
@@ -17,8 +17,8 @@ const state = {
   userId: null,
   year: null,
 
-  // persisted
-  checkedCredits: {},
+  // persisted: map of creditInstanceId → { checked: bool, note: string }
+  creditState: {},
 
   // derived
   creditInstances: []
@@ -36,7 +36,7 @@ export function getState() {
   return {
     userId: state.userId,
     year: state.year,
-    checkedCredits: { ...state.checkedCredits },
+    creditState: { ...state.creditState },
     creditInstances: [...state.creditInstances]
   };
 }
@@ -99,7 +99,7 @@ export async function setUser(userId) {
   }
 
   state.userId = userId;
-  state.checkedCredits = {};
+  state.creditState = {};
 
   await loadUserState();
   recomputeCredits();
@@ -118,30 +118,39 @@ export function setYear(year) {
 
 /**
  * -------------------------
- * Checked credit mutations
+ * Credit state mutations
  * -------------------------
  */
 
-export function toggleCredit(creditInstanceId, checked) {
-  const previous = state.checkedCredits[creditInstanceId];
+/**
+ * Save the checked state and note for a credit instance in one operation.
+ * This is the single write path — one optimistic update, one API call.
+ *
+ * @param {string} creditInstanceId
+ * @param {{ checked: boolean, note: string }} fields
+ */
+export function saveCreditEntry(creditInstanceId, { checked, note }) {
+  const previous = { ...(state.creditState[creditInstanceId] ?? {}) };
+  const trimmed = note.trim();
 
-  // Optimistic update
-  if (checked) {
-    state.checkedCredits[creditInstanceId] = true;
-  } else {
-    delete state.checkedCredits[creditInstanceId];
+  // Build the new entry: always store checked; only store note if non-empty
+  const next = { checked };
+  if (trimmed !== "") {
+    next.note = trimmed;
   }
 
+  // Optimistic update
+  state.creditState[creditInstanceId] = next;
   notify();
 
-  // Persist asynchronously
-  updateCheckedState(state.userId, creditInstanceId, checked)
+  // Single API call — this is the one that will hit DynamoDB
+  updateCreditState(state.userId, creditInstanceId, next)
     .catch(() => {
       // Rollback on failure
-      if (previous) {
-        state.checkedCredits[creditInstanceId] = true;
+      if (Object.keys(previous).length > 0) {
+        state.creditState[creditInstanceId] = previous;
       } else {
-        delete state.checkedCredits[creditInstanceId];
+        delete state.creditState[creditInstanceId];
       }
       notify();
     });
@@ -156,10 +165,10 @@ export function toggleCredit(creditInstanceId, checked) {
 async function loadUserState() {
   try {
     const response = await fetchUserState(state.userId);
-    state.checkedCredits = response?.checkedCredits ?? {};
+    state.creditState = response?.creditState ?? {};
   } catch (err) {
     console.error("Failed to load user state", err);
-    state.checkedCredits = {};
+    state.creditState = {};
   }
 }
 
