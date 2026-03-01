@@ -123,20 +123,24 @@ export function setYear(year) {
  */
 
 /**
- * Save the checked state and note for a credit instance in one operation.
+ * Save the checked state, note, and optional dateUsed for a credit instance.
  * This is the single write path — one optimistic update, one API call.
  *
  * @param {string} creditInstanceId
- * @param {{ checked: boolean, note: string }} fields
+ * @param {{ checked: boolean, note: string, dateUsed?: string }} fields
  */
-export function saveCreditEntry(creditInstanceId, { checked, note }) {
+export function saveCreditEntry(creditInstanceId, { checked, note, dateUsed }) {
   const previous = { ...(state.creditState[creditInstanceId] ?? {}) };
-  const trimmed = note.trim();
+  const trimmedNote = note.trim();
+  const trimmedDate = (dateUsed ?? "").trim();
 
-  // Build the new entry: always store checked; only store note if non-empty
+  // Build the new entry: always store checked; only store optional fields if non-empty
   const next = { checked };
-  if (trimmed !== "") {
-    next.note = trimmed;
+  if (trimmedNote !== "") {
+    next.note = trimmedNote;
+  }
+  if (trimmedDate !== "") {
+    next.dateUsed = trimmedDate;
   }
 
   // Optimistic update

@@ -5,6 +5,7 @@ import { toISODate } from "../utils/dates.js";
 
 const containerId = "timeline";
 const modalId = "credit-detail-modal";
+const infoPopoverId = "credit-info-popover";
 
 /**
  * Entry point
@@ -17,6 +18,7 @@ export function initTimeline() {
 
   // Inject the persistent modal element into the page (hidden by default)
   injectModal();
+  injectInfoPopover();
 
   // Initial render
   render(container, getState());
@@ -28,11 +30,74 @@ export function initTimeline() {
 
   // Event delegation: open modal on segment click
   container.addEventListener("click", handleTimelineClick);
+
+  // Event delegation: open info popover on ⓘ click
+  container.addEventListener("click", handleInfoClick);
+
+  // Close popover when clicking outside
+  document.addEventListener("click", handleOutsideClick, true);
 }
 
 // ---------------------------------------------------------------------------
 // Modal
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Info popover
+// ---------------------------------------------------------------------------
+
+function injectInfoPopover() {
+  if (document.getElementById(infoPopoverId)) return;
+
+  const el = document.createElement("div");
+  el.id = infoPopoverId;
+  el.className =
+    "hidden absolute z-30 bg-white border rounded-lg shadow-lg p-3 max-w-xs text-sm text-gray-700 leading-relaxed";
+  document.body.appendChild(el);
+}
+
+function handleInfoClick(event) {
+  const btn = event.target.closest("[data-info-description]");
+  if (!btn) return;
+
+  event.stopPropagation();
+
+  const description = btn.dataset.infoDescription;
+  const popover = document.getElementById(infoPopoverId);
+
+  // If clicking the same button while already open, close it
+  if (!popover.classList.contains("hidden") && popover._sourceBtn === btn) {
+    popover.classList.add("hidden");
+    popover._sourceBtn = null;
+    return;
+  }
+
+  popover.textContent = description;
+  popover._sourceBtn = btn;
+
+  // Position below the button
+  const rect = btn.getBoundingClientRect();
+  popover.classList.remove("hidden");
+
+  const popoverWidth = popover.offsetWidth;
+  let left = rect.left + window.scrollX;
+  // Clamp so it doesn't overflow the right edge
+  if (left + popoverWidth > window.innerWidth - 8) {
+    left = window.innerWidth - popoverWidth - 8;
+  }
+
+  popover.style.top = `${rect.bottom + window.scrollY + 4}px`;
+  popover.style.left = `${left}px`;
+}
+
+function handleOutsideClick(event) {
+  const popover = document.getElementById(infoPopoverId);
+  if (!popover || popover.classList.contains("hidden")) return;
+  if (!popover.contains(event.target) && !event.target.closest("[data-info-description]")) {
+    popover.classList.add("hidden");
+    popover._sourceBtn = null;
+  }
+}
 
 /**
  * Create and inject the modal scaffold into <body> once on init.
@@ -54,9 +119,16 @@ function injectModal() {
     <div class="relative bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6 space-y-4">
 
       <!-- Header -->
-      <div>
-        <h2 id="modal-title" class="text-lg font-semibold"></h2>
-        <p id="modal-subtitle" class="text-sm text-gray-500 mt-0.5"></p>
+      <div class="space-y-1">
+        <p id="modal-card-name" class="text-xs font-medium text-gray-400 uppercase tracking-wide"></p>
+        <h2 id="modal-title" class="text-xl font-semibold leading-tight"></h2>
+        <div class="flex items-center gap-2 pt-0.5">
+          <span id="modal-amount" class="inline-block bg-gray-100 text-gray-700 text-xs font-semibold px-2 py-0.5 rounded"></span>
+          <span id="modal-anniversary-badge" class="hidden inline-block bg-amber-100 text-amber-700 text-xs font-semibold px-2 py-0.5 rounded">Anniversary</span>
+          <span class="text-gray-300">·</span>
+          <span id="modal-date-range" class="text-xs text-gray-500"></span>
+        </div>
+        <p id="modal-description" class="text-sm text-gray-500 leading-relaxed pt-1"></p>
       </div>
 
       <!-- Checked -->
@@ -65,14 +137,24 @@ function injectModal() {
         <span class="text-sm font-medium">Mark as used</span>
       </label>
 
+      <!-- Date used -->
+      <div>
+        <label for="modal-date-used" class="block text-sm font-medium mb-1">Date Used <span class="text-gray-400 font-normal">(optional)</span></label>
+        <input
+          id="modal-date-used"
+          type="date"
+          class="border rounded px-2 py-1 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-400"
+        />
+      </div>
+
       <!-- Note -->
       <div>
-        <label for="modal-note" class="block text-sm font-medium mb-1">Notes</label>
+        <label for="modal-note" class="block text-sm font-medium mb-1">Notes <span class="text-gray-400 font-normal">(optional)</span></label>
         <textarea
           id="modal-note"
           rows="4"
           class="w-full border rounded p-2 text-sm text-gray-700 resize-y focus:outline-none focus:ring-1 focus:ring-blue-400"
-          placeholder="Optional field for notes. Use this to store things like what this credit was used for."
+          placeholder="Use this to store things like what this credit was used for."
         ></textarea>
       </div>
 
@@ -118,11 +200,19 @@ function openModal(creditInstanceId, creditInstance) {
   const cardDef = CARD_DEFINITIONS[creditInstance.cardId];
   const creditDef = CREDIT_DEFINITIONS[creditInstance.creditId];
 
-  document.getElementById("modal-title").textContent =
-    `${cardDef.name} — ${creditDef.name}`;
-  document.getElementById("modal-subtitle").textContent =
-    `$${creditInstance.amount}  ·  ${toISODate(creditInstance.startDate)} – ${toISODate(creditInstance.endDate)}`;
+  document.getElementById("modal-card-name").textContent = cardDef.name;
+  document.getElementById("modal-title").textContent = creditDef.name;
+  document.getElementById("modal-amount").textContent =
+    creditInstance.amount > 0 ? `$${creditInstance.amount}` : "No cash value";
+  const isAnniversary = creditInstance.periodType === "anniversary";
+  document.getElementById("modal-anniversary-badge").classList.toggle("hidden", !isAnniversary);
+  document.getElementById("modal-date-range").textContent =
+    `${toISODate(creditInstance.startDate)}  →  ${toISODate(creditInstance.endDate)}`;
+  const descEl = document.getElementById("modal-description");
+  descEl.textContent = creditInstance.description ?? "";
+  descEl.classList.toggle("hidden", !creditInstance.description);
   document.getElementById("modal-checked").checked = !!entry.checked;
+  document.getElementById("modal-date-used").value = entry.dateUsed ?? "";
   document.getElementById("modal-note").value = entry.note ?? "";
 
   const modal = document.getElementById(modalId);
@@ -139,10 +229,11 @@ function handleModalSave() {
   if (!_activeCreditId) return;
 
   const checked = document.getElementById("modal-checked").checked;
+  const dateUsed = document.getElementById("modal-date-used").value;
   const note = document.getElementById("modal-note").value;
 
   // Single write: one optimistic update, one API call to DynamoDB
-  saveCreditEntry(_activeCreditId, { checked, note });
+  saveCreditEntry(_activeCreditId, { checked, dateUsed, note });
 
   closeModal();
 }
@@ -240,7 +331,7 @@ function renderGlobalTimelineHeader(year) {
                   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
   return `
-    <div class="relative h-8 bg-gray-100 border rounded ml-32">
+    <div class="relative h-8 bg-gray-100 border rounded ml-48">
       <div class="absolute inset-0 flex">
         ${months.map((month, index) => {
           const leftPercent = (index / 12) * 100;
@@ -274,7 +365,7 @@ function renderCurrentDateLine(year) {
   return `
     <div
       class="absolute top-0 bottom-0 w-0.5 bg-red-500 z-20 pointer-events-none"
-      style="left: calc(8rem + (100% - 8rem) * ${fraction});"
+      style="left: calc(12rem + (100% - 12rem) * ${fraction});"
       title="Today"
     >
       <span
@@ -324,11 +415,24 @@ function groupCreditsByType(credits) {
 
 function renderCreditRow(creditId, creditInstances, state) {
   const creditDef = CREDIT_DEFINITIONS[creditId];
+  // All instances in this row share the same description (same card + credit config)
+  const description = creditInstances[0]?.description ?? "";
 
   return `
     <div class="flex items-center">
-      <div class="text-sm font-medium w-32 flex-shrink-0">
-        ${creditDef.name}
+      <div class="text-sm font-medium w-48 flex-shrink-0 flex items-center gap-1 flex-wrap">
+        <span>${creditDef.name}</span>
+        ${creditInstances[0]?.periodType === "anniversary" ? `
+          <span class="inline-block bg-amber-100 text-amber-700 text-xs font-medium px-1.5 py-0.5 rounded leading-none" title="Period resets on card anniversary, not Jan 1">Anniv</span>
+        ` : ""}
+        ${description ? `
+          <button
+            data-info-description="${description.replace(/"/g, "&quot;")}"
+            class="flex-shrink-0 text-gray-400 hover:text-blue-500 focus:outline-none leading-none"
+            aria-label="About this credit"
+            title="About this credit"
+          >&#9432;</button>
+        ` : ""}
       </div>
       <div class="relative bg-white border rounded h-8 overflow-hidden flex-1">
         ${renderTimelineBar(creditInstances, creditDef, state)}

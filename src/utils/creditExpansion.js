@@ -50,8 +50,11 @@ function expandCreditForCardAndYear(userCard, cardDef, creditConfig, year) {
     year
   );
 
+  // userCard.id is the CARD_DEFINITIONS map key (e.g. "amex_plat").
+  // cardDef.id may differ (e.g. "amex_personal_plat") and must NOT be used
+  // as cardId, since all lookups go through CARD_DEFINITIONS[cardId].
   return periods.map(period =>
-    createCreditInstance(cardDef, creditConfig, period)
+    createCreditInstance(userCard.id, cardDef, creditConfig, period)
   );
 }
 
@@ -132,15 +135,17 @@ function generateAnnualPeriods(anchorDate, year) {
   return periods;
 }
 
-function createCreditInstance(cardDef, creditConfig, period) {
+function createCreditInstance(cardKey, cardDef, creditConfig, period) {
   const startISO = toISODate(period.startDate);
   const endISO = toISODate(period.endDate);
 
   return {
-    id: `${cardDef.id}_${creditConfig.creditId}_${startISO}_${endISO}`,
-    cardId: cardDef.id,
+    id: `${cardKey}_${creditConfig.creditId}_${startISO}_${endISO}`,
+    cardId: cardKey,
     creditId: creditConfig.creditId,
     amount: creditConfig.amount,
+    description: creditConfig.description ?? "",
+    periodType: creditConfig.periodType,
     startDate: period.startDate,
     endDate: period.endDate
   };

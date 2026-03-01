@@ -1,20 +1,23 @@
+// Each entry is keyed by its credit ID — the key IS the id, no need to repeat it.
 export const CREDIT_DEFINITIONS = {
   // Amex generics
-  uber: { id: "uber", name: "Uber Credit" },
-  resy: { id: "resy", name: "Resy Credit" },
-  saks: { id: "saks", name: "Saks Credit" },
-  lulu: { id: "lulu", name: "Lululemon Credit" },
-  fhr: { id: "fhr", name: "FHR Credit" },
-  airline_incidental: { id: "airline_incidental", name: "Airline Incidental Credit" },
-  flight: { id: "flight", name: "Flight Credit" },
+  uber:               { name: "Uber Credit" },
+  resy:               { name: "Resy Credit" },
+  saks:               { name: "Saks Credit" },
+  lulu:               { name: "Lululemon Credit" },
+  fhr:                { name: "FHR Credit" },
+  airline_incidental: { name: "Airline Incidental Credit" },
+  flight:             { name: "Flight Credit" },
 
-  // VX
-  travel: { id: "travel", name: "Travel Credit" },
+  // Capital One
+  travel:             { name: "Travel Credit" },
 
   // Citi
-  splurge: { id: "splurge", name: "Splurge Credit" },
+  splurge:            { name: "Splurge Credit" },
 
   // Hilton
-  hilton_resort: { id: "hilton_resort", name: "Hilton Resort Credit" },
-  free_night: { id: "free_night", name: "Annual Free Night" },
+  hilton_resort:      { name: "Hilton Resort Credit" },
+  free_night:         { name: "Annual Free Night" },
+
+  hotel:         { name: "Hotel Credit" },
 };
