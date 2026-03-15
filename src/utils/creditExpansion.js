@@ -1,6 +1,5 @@
-import { CARD_DEFINITIONS } from "../data/cards.js";
+import { CARD_DEFINITIONS, Cadence, PeriodType } from "../data/definitions.js";
 import {
-  parseISODate,
   toISODate,
   addMonths,
   addYears,
@@ -40,8 +39,8 @@ function getCardDefinition(cardId) {
 
 function expandCreditForCardAndYear(userCard, cardDef, creditConfig, year) {
   const anchorDate =
-    creditConfig.periodType === "anniversary"
-      ? parseISODate(userCard.openedDate)
+    creditConfig.periodType === PeriodType.ANNIVERSARY
+      ? parseAnniversaryDate(userCard.anniversaryDate, year)
       : null;
 
   const periods = generatePeriodsForYear(
@@ -50,9 +49,8 @@ function expandCreditForCardAndYear(userCard, cardDef, creditConfig, year) {
     year
   );
 
-  // userCard.id is the CARD_DEFINITIONS map key (e.g. "amex_plat").
-  // cardDef.id may differ (e.g. "amex_personal_plat") and must NOT be used
-  // as cardId, since all lookups go through CARD_DEFINITIONS[cardId].
+  // userCard.id is the CARD_DEFINITIONS map key and the canonical cardId used
+  // in credit instance IDs and DynamoDB keys.
   return periods.map(period =>
     createCreditInstance(userCard.id, cardDef, creditConfig, period)
   );
@@ -60,13 +58,13 @@ function expandCreditForCardAndYear(userCard, cardDef, creditConfig, year) {
 
 function generatePeriodsForYear(anchorDate, creditConfig, year) {
   switch (creditConfig.cadence) {
-    case "monthly":
+    case Cadence.MONTHLY:
       return generateRollingPeriods(anchorDate, year, 1);
-    case "quarterly":
+    case Cadence.QUARTERLY:
       return generateRollingPeriods(anchorDate, year, 3);
-    case "biannual":
+    case Cadence.BIANNUAL:
       return generateRollingPeriods(anchorDate, year, 6);
-    case "annual":
+    case Cadence.ANNUAL:
       return generateAnnualPeriods(anchorDate, year);
     default:
       throw new Error(`Unsupported cadence: ${creditConfig.cadence}`);
@@ -133,6 +131,17 @@ function generateAnnualPeriods(anchorDate, year) {
   }
 
   return periods;
+}
+
+/**
+ * Parse an anniversaryDate string ("MM-DD") into a Date anchored to the
+ * given year. The year is used only as the starting reference point —
+ * the actual period generation logic in generateAnnualPeriods walks
+ * backward/forward from this anchor to cover the requested year.
+ */
+function parseAnniversaryDate(mmdd, year) {
+  const [month, day] = mmdd.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day));
 }
 
 function createCreditInstance(cardKey, cardDef, creditConfig, period) {

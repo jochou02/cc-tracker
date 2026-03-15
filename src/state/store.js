@@ -1,7 +1,7 @@
 // src/state/store.js
 
 import { expandCreditsForUserAndYear } from "../utils/creditExpansion.js";
-import { USERS } from "../data/userCards.js";
+import { USERS } from "../data/definitions.js";
 import {
   fetchUserState,
   updateCreditState

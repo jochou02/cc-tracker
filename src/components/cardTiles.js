@@ -1,7 +1,7 @@
 // src/components/cardTiles.js
 
 import { getState, subscribe } from "../state/store.js";
-import { CARD_DEFINITIONS } from "../data/cards.js";
+import { CARD_DEFINITIONS } from "../data/definitions.js";
 
 const containerId = "card-tiles";
 

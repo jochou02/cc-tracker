@@ -1,6 +1,5 @@
 import { getState, subscribe, saveCreditEntry } from "../state/store.js";
-import { CARD_DEFINITIONS } from "../data/cards.js";
-import { CREDIT_DEFINITIONS } from "../data/credits.js";
+import { CARD_DEFINITIONS, CREDIT_DEFINITIONS } from "../data/definitions.js";
 import { toISODate } from "../utils/dates.js";
 
 const containerId = "timeline";

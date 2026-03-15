@@ -1,5 +1,5 @@
 import { getState, subscribe, setUser } from "../state/store.js";
-import { USERS } from "../data/userCards.js";
+import { USERS } from "../data/definitions.js";
 
 const containerId = "user-selector";
 
@@ -36,10 +36,8 @@ function render(container, state) {
         ${userIds
           .map(
             id => `
-              <option value="${id}" ${
-                id === state.userId ? "selected" : ""
-              }>
-                ${id}
+              <option value="${id}" ${id === state.userId ? "selected" : ""}>
+                ${USERS[id].userId}
               </option>
             `
           )
