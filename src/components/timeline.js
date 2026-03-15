@@ -1,5 +1,5 @@
 import { getState, subscribe, saveCreditEntry } from "../state/store.js";
-import { CARD_DEFINITIONS, CREDIT_DEFINITIONS } from "../data/definitions.js";
+import { CARD_DEFINITIONS, CREDIT_DEFINITIONS, CardType } from "../data/definitions.js";
 import { toISODate } from "../utils/dates.js";
 
 const containerId = "timeline";
@@ -269,6 +269,23 @@ function render(container, state) {
 
   const grouped = groupByCard(state.creditInstances);
 
+  // Sort order: HOTEL → TRAVEL → GENERAL
+  const typeOrder = [CardType.HOTEL, CardType.TRAVEL, CardType.GENERAL];
+
+  // Group card IDs by CardType
+  const byType = {};
+  for (const type of typeOrder) byType[type] = [];
+  for (const cardId of Object.keys(grouped)) {
+    const cardType = CARD_DEFINITIONS[cardId]?.type ?? CardType.GENERAL;
+    byType[cardType].push(cardId);
+  }
+
+  const typeLabelMap = {
+    [CardType.HOTEL]:   "Hotel Cards",
+    [CardType.TRAVEL]:  "Travel Cards",
+    [CardType.GENERAL]: "General Cards",
+  };
+
   container.innerHTML = `
     <div class="bg-white border rounded-lg p-6">
       <div class="flex items-center justify-between mb-6">
@@ -286,11 +303,21 @@ function render(container, state) {
       <!-- Timeline content with unified current date line -->
       <div class="relative">
         ${renderCurrentDateLine(state.year)}
-        <div class="space-y-4">
-          ${Object.entries(grouped)
-            .map(([cardId, credits]) =>
-              renderCardTimeline(cardId, credits, state)
-            )
+        <div class="space-y-6">
+          ${typeOrder
+            .filter(type => byType[type].length > 0)
+            .map(type => `
+              <div>
+                <h3 class="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">
+                  ${typeLabelMap[type]}
+                </h3>
+                <div class="space-y-4">
+                  ${byType[type]
+                    .map(cardId => renderCardTimeline(cardId, grouped[cardId], state))
+                    .join("")}
+                </div>
+              </div>
+            `)
             .join("")}
         </div>
       </div>
