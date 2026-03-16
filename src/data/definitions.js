@@ -293,6 +293,7 @@ export const CARD_DEFINITIONS = {
     ],
     credits: [
       { creditId: CreditId.HILTON_CREDIT, cadence: Cadence.QUARTERLY, amount: 50, periodType: PeriodType.CALENDAR, description: "" },
+      { creditId: CreditId.FREE_NIGHT,    cadence: Cadence.ANNUAL,    amount: 0,  periodType: PeriodType.CALENDAR, description: "Awarded after $15,000 spend in a calendar year. Expires 1 year after earning." },
     ],
   },
 
@@ -380,7 +381,6 @@ export const CARD_DEFINITIONS = {
       { category: "Gas, EV charging, cable/streaming, transit & rideshare", multiplier: 2 },
     ],
     benefits: [
-      "Annual $99 Companion Fare after $6,000 annual spend",  
       "Free checked bag for you + up to 6 guests on the same reservation",
       "20% back on Alaska/Hawaiian in-flight purchases",
       "Priority boarding on Alaska Airlines flights",
@@ -388,7 +388,9 @@ export const CARD_DEFINITIONS = {
       "10% rewards bonus with eligible Bank of America account",
       "Global Entry / TSA PreCheck"
     ],
-    credits: [],
+    credits: [
+      { creditId: CreditId.COMPANION, cadence: Cadence.ANNUAL, amount: 99, periodType: PeriodType.ANNIVERSARY, description: "" },
+    ],
   },
 
   [CardId.ATMOS_SUMMIT]: {
@@ -401,7 +403,6 @@ export const CARD_DEFINITIONS = {
       { category: "Foreign purchases", multiplier: 3 },
     ],
     benefits: [
-      "Global Companion Awards (25K annually + up to 100K with $60K spend)",
       "8 Alaska Lounge passes per year",
       "Free checked bag + preferred boarding for you + up to 6 guests",
       "Priority boarding on Alaska Airlines",
@@ -412,7 +413,9 @@ export const CARD_DEFINITIONS = {
       "No foreign transaction fees",
       "Points sharing with up to 10 Atmos members",
     ],
-    credits: [],
+    credits: [
+      { creditId: CreditId.COMPANION, cadence: Cadence.ANNUAL, amount: 0, periodType: PeriodType.ANNIVERSARY, description: "Global Companion Awards (25K annually + up to 100K with $60K spend)" },
+    ],
   },
 };
 
@@ -428,14 +431,14 @@ export const USERS = {
     cards: [
       { id: CardId.AMEX_PLAT_BUSINESS, anniversaryDate: "10-25" },
       { id: CardId.AMEX_PLAT_PERSONAL, anniversaryDate: "11-26" },
-      { id: CardId.CITI_STRATA_ELITE,  anniversaryDate: "08-26" },
+      { id: CardId.CITI_STRATA_ELITE,  anniversaryDate: "08-10" },
       { id: CardId.HILTON_ASPIRE,      anniversaryDate: "06-26" },
       { id: CardId.HILTON_SURPASS,     anniversaryDate: "09-25" },
       { id: CardId.WORLD_OF_HYATT,     anniversaryDate: "06-25" },
-      { id: CardId.MARRIOT_BOUNDLESS,  anniversaryDate: "11-25" },
+      { id: CardId.MARRIOT_BOUNDLESS,  anniversaryDate: "04-03" },
       { id: CardId.IHG_PREMIER,        anniversaryDate: "09-25" },
       { id: CardId.BILT_PALLADIUM,     anniversaryDate: "02-07" },
-      { id: CardId.ATMOS_SUMMIT,       anniversaryDate: "" },
+      { id: CardId.ATMOS_SUMMIT,       anniversaryDate: "12-15" },
     ],
   },
   john: {
@@ -451,7 +454,7 @@ export const USERS = {
     userId: "Amy",
     cards: [
       { id: CardId.AMEX_PLAT_PERSONAL, anniversaryDate: "12-29" },
-      { id: CardId.CITI_STRATA_ELITE,  anniversaryDate: "" },
+      { id: CardId.CITI_STRATA_ELITE,  anniversaryDate: "08-20" },
       { id: CardId.HILTON_ASPIRE,      anniversaryDate: "02-12" },
       { id: CardId.HILTON_SURPASS,     anniversaryDate: "09-25" },
       { id: CardId.WORLD_OF_HYATT,     anniversaryDate: "06-01" },

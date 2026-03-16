@@ -33,30 +33,20 @@ export function initCardTiles() {
 // ---------------------------------------------------------------------------
 
 function render(container, state) {
-  const now = new Date();
+  const userCards = USERS[state.userId]?.cards ?? [];
 
-  const activeCredits = state.creditInstances.filter(
-    ci => now >= ci.startDate && now <= ci.endDate
-  );
-
-  if (activeCredits.length === 0) {
+  if (userCards.length === 0) {
     container.innerHTML = "";
     return;
   }
 
-  const byCard = groupByCard(activeCredits);
-
-  // Build a lookup of cardId → anniversaryDate for the current user
-  const userCards = USERS[state.userId]?.cards ?? [];
-  const anniversaryMap = {};
-  for (const uc of userCards) anniversaryMap[uc.id] = uc.anniversaryDate;
+  // Group all credit instances for the selected year by cardId
+  const byCard = groupByCard(state.creditInstances);
 
   container.innerHTML = `
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      ${Object.entries(byCard)
-        .map(([cardId, credits]) =>
-          renderCardTile(cardId, credits, state.creditState, anniversaryMap[cardId])
-        )
+      ${userCards
+        .map(uc => renderCardTile(uc.id, byCard[uc.id] ?? [], state.creditState, state.year, uc.anniversaryDate))
         .join("")}
     </div>
   `;
@@ -71,14 +61,18 @@ function groupByCard(creditInstances) {
   return map;
 }
 
-function renderCardTile(cardId, credits, creditState, anniversaryDate) {
+function renderCardTile(cardId, allCredits, creditState, year, anniversaryDate) {
   const cardDef = CARD_DEFINITIONS[cardId];
+  const now = new Date();
+
+  // Only count active credits (active relative to now) for usage tracking
+  const activeCredits = allCredits.filter(ci => now >= ci.startDate && now <= ci.endDate);
 
   let usedCount = 0;
   let usedAmount = 0;
   let totalAmount = 0;
 
-  for (const ci of credits) {
+  for (const ci of activeCredits) {
     totalAmount += ci.amount;
     if (creditState[ci.id]?.checked) {
       usedCount += 1;
@@ -87,8 +81,9 @@ function renderCardTile(cardId, credits, creditState, anniversaryDate) {
   }
 
   const remainingAmount = totalAmount - usedAmount;
-  const totalCount = credits.length;
-  const allUsed = usedCount === totalCount;
+  const totalCount = activeCredits.length;
+  const hasActiveCredits = totalCount > 0;
+  const allUsed = hasActiveCredits && usedCount === totalCount;
 
   const feeStr = cardDef.annualFee > 0 ? `$${cardDef.annualFee}/yr` : "No annual fee";
   const annivStr = anniversaryDate ? formatAnniversaryDate(anniversaryDate) : null;
@@ -109,12 +104,8 @@ function renderCardTile(cardId, credits, creditState, anniversaryDate) {
         ${annivStr ? `<span>·</span><span>Anniv. ${annivStr}</span>` : ""}
       </div>
 
-      <div class="text-sm text-gray-500 mb-2">
-        ${usedCount} / ${totalCount} active credits used
-      </div>
-
       <div class="text-lg font-semibold ${allUsed ? "text-green-600" : "text-gray-900"}">
-        ${allUsed ? "✓ All used" : `$${remainingAmount} remaining`}
+        ${hasActiveCredits ? `${usedCount} / ${totalCount} credits used` : "No active credits"}
       </div>
     </div>
   `;

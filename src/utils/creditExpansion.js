@@ -39,7 +39,7 @@ function getCardDefinition(cardId) {
 
 function expandCreditForCardAndYear(userCard, cardDef, creditConfig, year) {
   const anchorDate =
-    creditConfig.periodType === PeriodType.ANNIVERSARY
+    creditConfig.periodType === PeriodType.ANNIVERSARY && userCard.anniversaryDate
       ? parseAnniversaryDate(userCard.anniversaryDate, year)
       : null;
 

@@ -1,5 +1,5 @@
 import { getState, subscribe, saveCreditEntry } from "../state/store.js";
-import { CARD_DEFINITIONS, CREDIT_DEFINITIONS, CardType } from "../data/definitions.js";
+import { CARD_DEFINITIONS, CREDIT_DEFINITIONS, USERS, CardType } from "../data/definitions.js";
 import { toISODate } from "../utils/dates.js";
 
 const containerId = "timeline";
@@ -258,10 +258,11 @@ function handleTimelineClick(event) {
 // ---------------------------------------------------------------------------
 
 function render(container, state) {
-  if (state.creditInstances.length === 0) {
+  const userCards = USERS[state.userId]?.cards ?? [];
+  if (userCards.length === 0) {
     container.innerHTML = `
       <div class="text-gray-500 italic">
-        No credits for this year
+        No cards configured for this user
       </div>
     `;
     return;
@@ -269,13 +270,15 @@ function render(container, state) {
 
   const grouped = groupByCard(state.creditInstances);
 
+  const userCardIds = userCards.map(uc => uc.id);
+
   // Sort order: HOTEL → TRAVEL → GENERAL
   const typeOrder = [CardType.HOTEL, CardType.TRAVEL, CardType.GENERAL];
 
-  // Group card IDs by CardType
+  // Group card IDs by CardType using the user's full card list
   const byType = {};
   for (const type of typeOrder) byType[type] = [];
-  for (const cardId of Object.keys(grouped)) {
+  for (const cardId of userCardIds) {
     const cardType = CARD_DEFINITIONS[cardId]?.type ?? CardType.GENERAL;
     byType[cardType].push(cardId);
   }
@@ -313,7 +316,7 @@ function render(container, state) {
                 </h3>
                 <div class="space-y-4">
                   ${byType[type]
-                    .map(cardId => renderCardTimeline(cardId, grouped[cardId], state))
+                    .map(cardId => renderCardTimeline(cardId, grouped[cardId] ?? [], state))
                     .join("")}
                 </div>
               </div>
@@ -413,6 +416,7 @@ function groupByCard(creditInstances) {
 function renderCardTimeline(cardId, credits, state) {
   const cardDef = CARD_DEFINITIONS[cardId];
   const creditRows = groupCreditsByType(credits);
+  const hasCredits = Object.keys(creditRows).length > 0;
 
   return `
     <div class="border-b pb-4 last:border-b-0">
@@ -420,11 +424,14 @@ function renderCardTimeline(cardId, credits, state) {
         ${cardDef.name}
       </h3>
       <div class="space-y-2">
-        ${Object.entries(creditRows)
-          .map(([creditId, creditInstances]) =>
-            renderCreditRow(creditId, creditInstances, state)
-          )
-          .join("")}
+        ${hasCredits
+          ? Object.entries(creditRows)
+              .map(([creditId, creditInstances]) =>
+                renderCreditRow(creditId, creditInstances, state)
+              )
+              .join("")
+          : `<div class="text-sm text-gray-400 italic ml-1">No statement credits</div>`
+        }
       </div>
     </div>
   `;
