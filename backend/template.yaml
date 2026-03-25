@@ -1,0 +1,99 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Credit Card Perks Tracker backend
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Timeout: 10
+    MemorySize: 128
+    Environment:
+      Variables:
+        TABLE_NAME: !Ref StateTable
+
+Parameters:
+  AllowedOrigin:
+    Type: String
+    Description: GitHub Pages origin for CORS (e.g. https://youruser.github.io)
+    Default: "*"
+
+  ApiKeyValue:
+    Type: String
+    Description: Shared API key for request validation
+    NoEcho: true
+
+Resources:
+  # --- API Gateway (HTTP API) ---
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: prod
+      CorsConfiguration:
+        AllowOrigins:
+          - !Ref AllowedOrigin
+        AllowMethods:
+          - GET
+          - POST
+          - OPTIONS
+        AllowHeaders:
+          - Content-Type
+          - x-api-key
+
+  # --- Lambda Functions ---
+  GetStateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/getState.handler
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref StateTable
+      Environment:
+        Variables:
+          API_KEY: !Ref ApiKeyValue
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /state
+            Method: GET
+
+  PostStateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/postState.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref StateTable
+      Environment:
+        Variables:
+          API_KEY: !Ref ApiKeyValue
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /state
+            Method: POST
+
+  # --- DynamoDB ---
+  StateTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: credit-tracker
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+
+Outputs:
+  ApiUrl:
+    Description: Base URL for the API
+    Value: !Sub "https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com/prod"
