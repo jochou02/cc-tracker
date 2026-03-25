@@ -1,3 +1,2 @@
-// Replace these after deploying the backend with `sam deploy`
-export const API_BASE_URL = ""; // e.g. "https://abc123.execute-api.us-east-1.amazonaws.com/prod"
-export const API_KEY = "";      // the key you passed as ApiKeyValue parameter
+export const API_BASE_URL = "https://paat0j08s3.execute-api.us-west-2.amazonaws.com/prod";
+export const API_KEY = "randomrandom-string";
