@@ -23,6 +23,7 @@ export const CreditId = Object.freeze({
   RESY:               "resy",
   DUNKIN:             "dunkin",
   DINING:             "dining",
+  GRUBHUB:            "grubhub",
 
   // Shopping
   SAKS:               "saks",
@@ -30,6 +31,7 @@ export const CreditId = Object.freeze({
   SPLURGE:            "splurge",
   OURA:               "oura",
   DELL:               "dell",
+  WALGREENS:          "walgreens",
 
   // Flights
   COMPANION:          "companion",
@@ -104,6 +106,7 @@ export const CREDIT_DEFINITIONS = {
   [CreditId.RESY]:               { name: "Resy Credit" },
   [CreditId.DUNKIN]:             { name: "Dunkin Credit" },
   [CreditId.DINING]:             { name: "Dining Credit" },
+  [CreditId.GRUBHUB]:            { name: "BiltCash Grubhub GC" },
 
   // Shopping
   [CreditId.SAKS]:               { name: "Saks Credit" },
@@ -111,6 +114,7 @@ export const CREDIT_DEFINITIONS = {
   [CreditId.SPLURGE]:            { name: "Splurge Credit" },
   [CreditId.OURA]:               { name: "Oura Ring Credit" },
   [CreditId.DELL]:               { name: "Dell Credit" },
+  [CreditId.WALGREENS]:          { name: "BiltCash Walgreens GC" },
 
   // Flights
   [CreditId.COMPANION]:          { name: "Companion Fare Award" },
@@ -368,7 +372,9 @@ export const CARD_DEFINITIONS = {
       "No foreign transaction fees",
     ],
     credits: [
-      { creditId: CreditId.HOTEL, cadence: Cadence.BIANNUAL, amount: 200, periodType: PeriodType.CALENDAR, description: "" },
+      { creditId: CreditId.HOTEL, cadence: Cadence.BIANNUAL, amount: 200, periodType: PeriodType.CALENDAR, description: "Used at time of booking. Use with Bilt Cash hotel credit redemption" },
+      { creditId: CreditId.GRUBHUB, cadence: Cadence.MONTHLY, amount: 10, periodType: PeriodType.CALENDAR, description: "" },
+      { creditId: CreditId.WALGREENS, cadence: Cadence.MONTHLY, amount: 10, periodType: PeriodType.CALENDAR, description: "" },
     ],
   },
 
@@ -444,10 +450,10 @@ export const USERS = {
   john: {
     userId: "John",
     cards: [
-      { id: CardId.AMEX_PLAT_PERSONAL, anniversaryDate: "02-10" },
-      { id: CardId.HILTON_ASPIRE,      anniversaryDate: "11-14" },
+      { id: CardId.AMEX_PLAT_PERSONAL, anniversaryDate: "09-23" },
+      { id: CardId.BILT_PALLADIUM,     anniversaryDate: "02-07" },
       { id: CardId.VENTURE_X,          anniversaryDate: "11-14" },
-      { id: CardId.CITI_STRATA_ELITE,  anniversaryDate: "11-14" },
+      { id: CardId.ATMOS_ASCENT,       anniversaryDate: "12-29" },
     ],
   },
   amy: {
