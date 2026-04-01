@@ -6,6 +6,7 @@ import {
   fetchUserState,
   updateCreditState
 } from "../utils/api.js";
+import { showToast } from "../utils/toast.js";
 
 /**
  * -------------------------
@@ -16,6 +17,7 @@ import {
 const state = {
   userId: null,
   year: null,
+  loading: false,
 
   // persisted: map of creditInstanceId → { checked: bool, note: string }
   creditState: {},
@@ -36,6 +38,7 @@ export function getState() {
   return {
     userId: state.userId,
     year: state.year,
+    loading: state.loading,
     creditState: { ...state.creditState },
     creditInstances: [...state.creditInstances]
   };
@@ -77,9 +80,12 @@ export async function initStore() {
 
   state.userId = userIds[0];
   state.year = new Date().getFullYear();
+  state.loading = true;
+  notify();
 
   await loadUserState();
   recomputeCredits();
+  state.loading = false;
   notify();
 }
 
@@ -100,9 +106,12 @@ export async function setUser(userId) {
 
   state.userId = userId;
   state.creditState = {};
+  state.loading = true;
+  notify();
 
   await loadUserState();
   recomputeCredits();
+  state.loading = false;
   notify();
 }
 
@@ -149,7 +158,11 @@ export function saveCreditEntry(creditInstanceId, { checked, note, dateUsed }) {
 
   // Single API call — this is the one that will hit DynamoDB
   updateCreditState(state.userId, creditInstanceId, next)
+    .then(() => {
+      showToast("Saved");
+    })
     .catch(() => {
+      showToast("Failed to save — reverted", "error");
       // Rollback on failure
       if (Object.keys(previous).length > 0) {
         state.creditState[creditInstanceId] = previous;
@@ -172,6 +185,7 @@ async function loadUserState() {
     state.creditState = response?.creditState ?? {};
   } catch (err) {
     console.error("Failed to load user state", err);
+    showToast("Failed to load data", "error");
     state.creditState = {};
   }
 }

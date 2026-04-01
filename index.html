@@ -9,14 +9,19 @@
     <script src="https://cdn.tailwindcss.com"></script>
   </head>
   <body class="bg-gray-50 text-gray-900">
-    <main class="max-w-6xl mx-auto p-6 space-y-8">
-      <h1 class="text-2xl font-bold">
-        Credit Card Perks Tracker
-      </h1>
+    <main class="max-w-6xl mx-auto p-6 space-y-6">
+      <!-- Unified header bar -->
+      <header id="app-header" class="bg-white border rounded-lg px-6 py-4 flex items-center justify-between flex-wrap gap-4">
+        <h1 class="text-xl font-bold tracking-tight">Credit Card Perks Tracker</h1>
+        <div class="flex items-center gap-5">
+          <div id="toolbar-user"></div>
+          <div class="w-px h-6 bg-gray-200"></div>
+          <div id="toolbar-year"></div>
+        </div>
+      </header>
 
-
-      <section id="user-selector"></section>
-      <section id="year-selector"></section>
+      <!-- Toast container for save feedback -->
+      <div id="toast-container" class="fixed top-4 right-4 z-[100] space-y-2"></div>
 
       <!-- Card summary tiles — per-card grid showing used/remaining credits -->
       <section id="card-tiles"></section>
