@@ -38,10 +38,6 @@ export function initTimeline() {
 }
 
 // ---------------------------------------------------------------------------
-// Modal
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
 // Info popover
 // ---------------------------------------------------------------------------
 
@@ -97,6 +93,10 @@ function handleOutsideClick(event) {
     popover._sourceBtn = null;
   }
 }
+
+// ---------------------------------------------------------------------------
+// Modal
+// ---------------------------------------------------------------------------
 
 /**
  * Create and inject the modal scaffold into <body> once on init.
@@ -257,30 +257,49 @@ function handleTimelineClick(event) {
 // Render
 // ---------------------------------------------------------------------------
 
+/*
+ * Layout: a two-column CSS grid.
+ *   col 1 = label (fixed 12rem)
+ *   col 2 = bar area (1fr)
+ *
+ * Month header labels and bar segments both use day-accurate
+ * percentage positioning inside col 2, so they align perfectly.
+ */
+
+/** Days in each month for a given year. */
+function daysInMonth(year, month) {
+  return new Date(year, month + 1, 0).getDate();
+}
+
+/** Cumulative day offsets: [0, 31, 59, ...totalDays] */
+function monthOffsets(year) {
+  const o = [0];
+  for (let m = 0; m < 12; m++) o.push(o[m] + daysInMonth(year, m));
+  return o;
+}
+
+/** Date → percentage [0–100] within the year, day-accurate. */
+function dateToPct(date, year, offsets) {
+  const m = date.getUTCMonth();
+  const d = date.getUTCDate() - 1;
+  return ((offsets[m] + d) / offsets[12]) * 100;
+}
+
 function render(container, state) {
   const userCards = USERS[state.userId]?.cards ?? [];
   if (userCards.length === 0) {
-    container.innerHTML = `
-      <div class="text-gray-500 italic">
-        No cards configured for this user
-      </div>
-    `;
+    container.innerHTML = `<div class="text-gray-400 italic">No cards configured for this user</div>`;
     return;
   }
 
   const grouped = groupByCard(state.creditInstances);
-
   const userCardIds = userCards.map(uc => uc.id);
 
-  // Sort order: HOTEL → TRAVEL → GENERAL
   const typeOrder = [CardType.HOTEL, CardType.TRAVEL, CardType.GENERAL];
-
-  // Group card IDs by CardType using the user's full card list
   const byType = {};
   for (const type of typeOrder) byType[type] = [];
   for (const cardId of userCardIds) {
-    const cardType = CARD_DEFINITIONS[cardId]?.type ?? CardType.GENERAL;
-    byType[cardType].push(cardId);
+    byType[CARD_DEFINITIONS[cardId]?.type ?? CardType.GENERAL].push(cardId);
   }
 
   const typeLabelMap = {
@@ -289,228 +308,136 @@ function render(container, state) {
     [CardType.GENERAL]: "General Cards",
   };
 
+  const offsets = monthOffsets(state.year);
+
+  // Month header: labels positioned at the same offsets as the bars
+  const monthHeader = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+    .map((m, i) => {
+      const left = (offsets[i] / offsets[12]) * 100;
+      const width = (daysInMonth(state.year, i) / offsets[12]) * 100;
+      return `<div class="absolute text-xs font-medium text-gray-500 text-center ${i % 2 === 0 ? 'bg-gray-50/80' : ''}" style="left:${left.toFixed(2)}%;width:${width.toFixed(2)}%;top:0;bottom:0;display:flex;align-items:center;justify-content:center;">${m}</div>`;
+    }).join('');
+
+  // Build rows
+  let rows = '';
+
+  // Month header row
+  rows += `<div></div><div class="relative h-8 border-b border-gray-200">${monthHeader}</div>`;
+
+  for (const type of typeOrder) {
+    if (byType[type].length === 0) continue;
+
+    rows += `<div class="col-span-2 text-[10px] font-semibold uppercase tracking-widest text-gray-300 pt-4 pb-1">${typeLabelMap[type]}</div>`;
+
+    for (const cardId of byType[type]) {
+      const cardDef = CARD_DEFINITIONS[cardId];
+      const credits = grouped[cardId] ?? [];
+      const creditRows = groupByCredit(credits);
+
+      rows += `<div class="col-span-2 text-sm font-semibold text-gray-800 pt-2 pb-1">${cardDef.name}</div>`;
+
+      if (Object.keys(creditRows).length === 0) {
+        rows += `<div class="col-span-2 text-xs text-gray-300 italic pb-1">No statement credits</div>`;
+        continue;
+      }
+
+      for (const [creditId, instances] of Object.entries(creditRows)) {
+        rows += renderCreditRow(creditId, instances, state, offsets);
+      }
+    }
+  }
+
   container.innerHTML = `
-    <div class="bg-white border rounded-lg p-6">
-      <div class="flex items-center justify-between mb-6">
-        <h2 class="text-xl font-semibold">
-          Timeline - ${state.year}
-        </h2>
-        ${renderLegend()}
-      </div>
-
-      <!-- Global timeline header -->
-      <div class="relative mb-4">
-        ${renderGlobalTimelineHeader(state.year)}
-      </div>
-
-      <!-- Timeline content with unified current date line -->
-      <div class="relative">
-        ${renderCurrentDateLine(state.year)}
-        <div class="space-y-6">
-          ${typeOrder
-            .filter(type => byType[type].length > 0)
-            .map(type => `
-              <div>
-                <h3 class="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">
-                  ${typeLabelMap[type]}
-                </h3>
-                <div class="space-y-4">
-                  ${byType[type]
-                    .map(cardId => renderCardTimeline(cardId, grouped[cardId] ?? [], state))
-                    .join("")}
-                </div>
-              </div>
-            `)
-            .join("")}
+    <div class="bg-white border border-gray-200 rounded-xl px-5 pt-4 pb-5">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold text-gray-800">Timeline · ${state.year}</h2>
+        <div class="flex items-center gap-4 text-xs text-gray-500">
+          <span class="flex items-center gap-1.5"><span class="inline-block w-3 h-3 rounded bg-blue-500"></span>Active</span>
+          <span class="flex items-center gap-1.5"><span class="inline-block w-3 h-3 rounded bg-emerald-300"></span>Used</span>
+          <span class="flex items-center gap-1.5"><span class="inline-block w-3 h-3 rounded bg-gray-200 border border-gray-300"></span>Inactive</span>
         </div>
       </div>
+      <div class="grid" style="grid-template-columns: 12rem 1fr;">
+        ${rows}
+      </div>
     </div>
   `;
 }
 
 // ---------------------------------------------------------------------------
-// Rendering helpers
+// Helpers
 // ---------------------------------------------------------------------------
 
-function renderLegend() {
-  return `
-    <div class="flex items-center gap-4 text-xs">
-      <div class="flex items-center gap-1">
-        <div class="w-3 h-3 bg-blue-400 rounded"></div>
-        <span>Active</span>
-      </div>
-      <div class="flex items-center gap-1">
-        <div class="w-3 h-3 bg-green-400 rounded"></div>
-        <span>Used</span>
-      </div>
-      <div class="flex items-center gap-1">
-        <div class="w-3 h-3 bg-gray-300 rounded"></div>
-        <span>Inactive</span>
-      </div>
-      <div class="flex items-center gap-1">
-        <div class="w-1 h-3 bg-red-500"></div>
-        <span>Today</span>
-      </div>
-    </div>
-  `;
+function groupByCard(instances) {
+  const m = {};
+  for (const ci of instances) (m[ci.cardId] ??= []).push(ci);
+  return m;
 }
 
-function renderGlobalTimelineHeader(year) {
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-  return `
-    <div class="relative h-8 bg-gray-100 border rounded ml-48">
-      <div class="absolute inset-0 flex">
-        ${months.map((month, index) => {
-          const leftPercent = (index / 12) * 100;
-          const widthPercent = (1 / 12) * 100;
-          return `
-            <div
-              class="border-r border-gray-300 flex items-center justify-start pl-2 text-xs font-medium text-gray-600"
-              style="left: ${leftPercent}%; width: ${widthPercent}%;"
-            >
-              ${month}
-            </div>
-          `;
-        }).join('')}
-      </div>
-    </div>
-  `;
+function groupByCredit(instances) {
+  const m = {};
+  for (const ci of instances) (m[ci.creditId] ??= []).push(ci);
+  return m;
 }
 
-function renderCurrentDateLine(year) {
-  const currentYear = new Date().getFullYear();
-  if (year !== currentYear) return '';
-
-  const now = new Date();
-  const yearStart = new Date(Date.UTC(year, 0, 1));
-  const yearEnd = new Date(Date.UTC(year, 11, 31));
-  const yearDuration = yearEnd.getTime() - yearStart.getTime();
-  const currentPercent = ((now.getTime() - yearStart.getTime()) / yearDuration) * 100;
-
-  const fraction = (currentPercent / 100).toFixed(4);
-  const todayLabel = now.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  return `
-    <div
-      class="absolute top-0 bottom-0 w-0.5 bg-red-500 z-20 pointer-events-none"
-      style="left: calc(12rem + (100% - 12rem) * ${fraction});"
-      title="Today"
-    >
-      <span
-        class="absolute top-0 left-1 text-xs font-medium text-red-500 whitespace-nowrap pointer-events-none select-none"
-      >${todayLabel}</span>
-    </div>
-  `;
-}
-
-function groupByCard(creditInstances) {
-  const map = {};
-  for (const ci of creditInstances) {
-    if (!map[ci.cardId]) map[ci.cardId] = [];
-    map[ci.cardId].push(ci);
-  }
-  return map;
-}
-
-function renderCardTimeline(cardId, credits, state) {
-  const cardDef = CARD_DEFINITIONS[cardId];
-  const creditRows = groupCreditsByType(credits);
-  const hasCredits = Object.keys(creditRows).length > 0;
-
-  return `
-    <div class="border-b pb-4 last:border-b-0">
-      <h3 class="font-medium text-lg mb-3">
-        ${cardDef.name}
-      </h3>
-      <div class="space-y-2">
-        ${hasCredits
-          ? Object.entries(creditRows)
-              .map(([creditId, creditInstances]) =>
-                renderCreditRow(creditId, creditInstances, state)
-              )
-              .join("")
-          : `<div class="text-sm text-gray-400 italic ml-1">No statement credits</div>`
-        }
-      </div>
-    </div>
-  `;
-}
-
-function groupCreditsByType(credits) {
-  const map = {};
-  for (const ci of credits) {
-    if (!map[ci.creditId]) map[ci.creditId] = [];
-    map[ci.creditId].push(ci);
-  }
-  return map;
-}
-
-function renderCreditRow(creditId, creditInstances, state) {
+function renderCreditRow(creditId, instances, state, offsets) {
   const creditDef = CREDIT_DEFINITIONS[creditId];
-  // All instances in this row share the same description (same card + credit config)
-  const description = creditInstances[0]?.description ?? "";
+  const desc = instances[0]?.description ?? "";
+  const year = state.year;
+  const now = Date.now();
 
-  return `
-    <div class="flex items-center">
-      <div class="text-sm font-medium w-48 flex-shrink-0 flex items-center gap-1 flex-wrap">
-        <span>${creditDef.name}</span>
-        ${creditInstances[0]?.periodType === "anniversary" ? `
-          <span class="inline-block bg-amber-100 text-amber-700 text-xs font-medium px-1.5 py-0.5 rounded leading-none" title="Period resets on card anniversary, not Jan 1">Anniv</span>
-        ` : ""}
-        ${description ? `
-          <button
-            data-info-description="${description.replace(/"/g, "&quot;")}"
-            class="flex-shrink-0 text-gray-400 hover:text-blue-500 focus:outline-none leading-none"
-            aria-label="About this credit"
-            title="About this credit"
-          >&#9432;</button>
-        ` : ""}
-      </div>
-      <div class="relative bg-white border rounded h-8 overflow-hidden flex-1">
-        ${renderTimelineBar(creditInstances, creditDef, state)}
-      </div>
+  const label = `
+    <div class="flex items-center gap-1 min-w-0 pr-2 py-1">
+      <span class="text-xs text-gray-500 truncate">${creditDef.name}</span>
+      ${instances[0]?.periodType === "anniversary"
+        ? '<span class="flex-shrink-0 text-[10px] font-semibold text-amber-700 bg-amber-100 px-1.5 py-px rounded" title="Anniversary-based period">Anniv</span>'
+        : ''}
+      ${desc
+        ? `<button data-info-description="${desc.replace(/"/g, "&quot;")}" class="flex-shrink-0 text-gray-300 hover:text-blue-500 text-xs leading-none" aria-label="Info" title="Info">ⓘ</button>`
+        : ''}
     </div>
   `;
+
+  const ys = new Date(Date.UTC(year, 0, 1));
+  const ye = new Date(Date.UTC(year, 11, 31));
+
+  // Gap between segments: 3px on each side = 6px total gap between adjacent segments
+  const gapPx = 2;
+
+  const segments = instances.map(ci => {
+    const vs = new Date(Math.max(ci.startDate.getTime(), ys.getTime()));
+    const ve = new Date(Math.min(ci.endDate.getTime(), ye.getTime()));
+
+    const left = dateToPct(vs, year, offsets);
+    const right = dateToPct(ve, year, offsets);
+    const dayPct = (1 / offsets[12]) * 100;
+    const width = right - left + dayPct;
+
+    const entry = state.creditState[ci.id] ?? {};
+    const checked = !!entry.checked;
+    const active = now >= ci.startDate.getTime() && now <= ci.endDate.getTime();
+    const hasNote = !!(entry.note?.trim());
+
+    const bg = checked ? 'bg-emerald-300 text-white' : active ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-400';
+
+    // Show date range inside anniversary credit boxes if wide enough (~2+ months)
+    const isAnniv = ci.periodType === "anniversary";
+    const dateLabel = isAnniv && width > 16 ? `${formatShortDate(ci.startDate)} → ${formatShortDate(ci.endDate)}` : '';
+
+    return `<div
+      class="${bg} absolute rounded-md h-7 flex items-center justify-center gap-1.5 cursor-pointer hover:brightness-110 transition-all"
+      style="left:calc(${left.toFixed(2)}% + ${gapPx}px);width:calc(${width.toFixed(2)}% - ${gapPx * 2}px);top:50%;transform:translateY(-50%)"
+      data-credit-id="${ci.id}"
+      title="${creditDef.name}: $${ci.amount} · ${toISODate(ci.startDate)} → ${toISODate(ci.endDate)}${hasNote ? ' 📝' : ''}"
+    >${dateLabel ? `<span class="text-[10px] font-medium opacity-80 truncate">${dateLabel}</span>` : ''}${checked ? '<span class="text-[10px] font-bold">✓</span>' : ''}${hasNote ? '<span class="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-red-500 pointer-events-none"></span>' : ''}</div>`;
+  }).join('');
+
+  const bar = `<div class="relative h-9">${segments}</div>`;
+
+  return label + bar;
 }
 
-function renderTimelineBar(creditInstances, creditDef, state) {
-  const year = state.year;
-  const yearStart = new Date(Date.UTC(year, 0, 1));
-  const yearEnd = new Date(Date.UTC(year, 11, 31));
-  const yearDuration = yearEnd.getTime() - yearStart.getTime();
-  const now = new Date();
-
-  return creditInstances.map(ci => {
-    const visibleStart = new Date(Math.max(ci.startDate.getTime(), yearStart.getTime()));
-    const visibleEnd = new Date(Math.min(ci.endDate.getTime(), yearEnd.getTime()));
-
-    const leftPercent = ((visibleStart.getTime() - yearStart.getTime()) / yearDuration) * 100;
-    const widthPercent = ((visibleEnd.getTime() - visibleStart.getTime()) / yearDuration) * 100;
-
-    const isActive = now >= ci.startDate && now <= ci.endDate;
-    const entry = state.creditState[ci.id] ?? {};
-    const isChecked = !!entry.checked;
-    const hasNote = !!(entry.note && entry.note.trim());
-
-    let bgColor;
-    if (isChecked) {
-      bgColor = "bg-green-400";
-    } else if (isActive) {
-      bgColor = "bg-blue-400";
-    } else {
-      bgColor = "bg-gray-300";
-    }
-
-    return `
-      <div
-        class="${bgColor} absolute top-0 bottom-0 border-r border-white hover:opacity-75 cursor-pointer"
-        style="left: ${leftPercent.toFixed(2)}%; width: ${widthPercent.toFixed(2)}%;"
-        data-credit-id="${ci.id}"
-        title="${creditDef.name}: $${ci.amount} (${toISODate(ci.startDate)} – ${toISODate(ci.endDate)})${hasNote ? " 📝" : ""}"
-      >
-        ${hasNote ? `<span class="absolute bottom-0.5 right-0.5 text-xs leading-none pointer-events-none select-none">📝</span>` : ""}
-      </div>
-    `;
-  }).join('');
+/** Format a UTC Date as "Mon D, YYYY" (e.g. "Jun 26, 2025") */
+function formatShortDate(date) {
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 }

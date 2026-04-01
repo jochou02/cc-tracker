@@ -88,25 +88,34 @@ function renderCardTile(cardId, allCredits, creditState, year, anniversaryDate) 
   const feeStr = cardDef.annualFee > 0 ? `$${cardDef.annualFee}/yr` : "No annual fee";
   const annivStr = anniversaryDate ? formatAnniversaryDate(anniversaryDate) : null;
 
+  // Progress bar width
+  const progressPct = totalCount > 0 ? (usedCount / totalCount) * 100 : 0;
+
   return `
     <div
-      class="border rounded-lg p-4 bg-white cursor-pointer hover:shadow-md hover:border-gray-400 transition-shadow"
+      class="border border-gray-200 rounded-xl p-4 bg-white cursor-pointer hover:shadow-md hover:border-gray-300 transition-all"
       data-card-id="${cardId}"
       role="button"
       tabindex="0"
     >
-      <div class="font-medium mb-1">
-        ${cardDef.name}
-      </div>
+      <div class="text-sm font-semibold text-gray-800 mb-0.5">${cardDef.name}</div>
 
-      <div class="flex items-center gap-2 text-xs text-gray-400 mb-2">
+      <div class="flex items-center gap-2 text-[11px] text-gray-400 mb-3">
         <span>${feeStr}</span>
         ${annivStr ? `<span>·</span><span>Anniv. ${annivStr}</span>` : ""}
       </div>
 
-      <div class="text-lg font-semibold ${allUsed ? "text-green-600" : "text-gray-900"}">
-        ${hasActiveCredits ? `${usedCount} / ${totalCount} credits used` : "No active credits"}
-      </div>
+      ${hasActiveCredits ? `
+        <div class="flex items-baseline justify-between mb-1.5">
+          <span class="text-sm font-semibold ${allUsed ? 'text-emerald-400' : 'text-gray-800'}">${usedCount} / ${totalCount} used</span>
+          ${remainingAmount > 0 ? `<span class="text-xs text-gray-400">$${remainingAmount} remaining</span>` : ''}
+        </div>
+        <div class="h-1.5 rounded-full bg-gray-100 overflow-hidden">
+          <div class="h-full rounded-full ${allUsed ? 'bg-emerald-300' : 'bg-blue-500'} transition-all" style="width:${progressPct}%"></div>
+        </div>
+      ` : `
+        <div class="text-sm text-gray-400">No active credits</div>
+      `}
     </div>
   `;
 }
