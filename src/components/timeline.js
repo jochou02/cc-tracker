@@ -259,7 +259,7 @@ function handleTimelineClick(event) {
 
 /*
  * Layout: a two-column CSS grid.
- *   col 1 = label (fixed 12rem)
+ *   col 1 = label (fixed 10rem)
  *   col 2 = bar area (1fr)
  *
  * Month header labels and bar segments both use day-accurate
@@ -357,8 +357,10 @@ function render(container, state) {
           <span class="flex items-center gap-1.5"><span class="inline-block w-3 h-3 rounded bg-gray-200 border border-gray-300"></span>Inactive</span>
         </div>
       </div>
-      <div class="grid" style="grid-template-columns: 12rem 1fr;">
-        ${rows}
+      <div class="overflow-x-auto -mx-5 px-5">
+        <div class="grid" style="grid-template-columns: 10rem 1fr; min-width: 700px;">
+          ${rows}
+        </div>
       </div>
     </div>
   `;
