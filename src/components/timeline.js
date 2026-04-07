@@ -354,7 +354,8 @@ function render(container, state) {
         <div class="flex items-center gap-4 text-xs text-gray-500">
           <span class="flex items-center gap-1.5"><span class="inline-block w-3 h-3 rounded bg-blue-500"></span>Active</span>
           <span class="flex items-center gap-1.5"><span class="inline-block w-3 h-3 rounded bg-emerald-300"></span>Used</span>
-          <span class="flex items-center gap-1.5"><span class="inline-block w-3 h-3 rounded bg-gray-200 border border-gray-300"></span>Inactive</span>
+          <span class="flex items-center gap-1.5"><span class="inline-block w-3 h-3 rounded bg-blue-100 border border-blue-200"></span>Upcoming</span>
+          <span class="flex items-center gap-1.5"><span class="inline-block w-3 h-3 rounded bg-gray-200 border border-gray-300"></span>Expired</span>
         </div>
       </div>
       <div class="overflow-x-auto -mx-5 px-5">
@@ -420,7 +421,12 @@ function renderCreditRow(creditId, instances, state, offsets) {
     const active = now >= ci.startDate.getTime() && now <= ci.endDate.getTime();
     const hasNote = !!(entry.note?.trim());
 
-    const bg = checked ? 'bg-emerald-300 text-white' : active ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-400';
+    const past = now > ci.endDate.getTime();
+    const future = now < ci.startDate.getTime();
+    const bg = checked ? 'bg-emerald-300 text-white'
+      : active ? 'bg-blue-500 text-white'
+      : future ? 'bg-blue-100 text-blue-400 border border-blue-200'
+      : 'bg-gray-200 text-gray-400';
 
     // Show date range inside anniversary credit boxes if wide enough (~2+ months)
     const isAnniv = ci.periodType === "anniversary";
