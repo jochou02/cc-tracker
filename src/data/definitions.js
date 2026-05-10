@@ -452,7 +452,7 @@ export const USERS = {
     cards: [
       { id: CardId.AMEX_PLAT_PERSONAL, anniversaryDate: "09-23" },
       { id: CardId.BILT_PALLADIUM,     anniversaryDate: "02-07" },
-      { id: CardId.VENTURE_X,          anniversaryDate: "11-14" },
+      { id: CardId.VENTURE_X,          anniversaryDate: "05-11" },
       { id: CardId.ATMOS_ASCENT,       anniversaryDate: "12-29" },
     ],
   },
